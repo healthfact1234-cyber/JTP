@@ -2,7 +2,7 @@ name: Update ZioTvPlus M3U
 
 on:
   schedule:
-    - cron: '0 */1 * * *'  # ← Yeh change kiya
+    - cron: '0 */1 * * *'
   workflow_dispatch:
   push:
     branches:
@@ -30,7 +30,7 @@ jobs:
           exit 1
         fi
         
-        echo "📥 Getting Api JioSTB: $SOURCE_URL"
+        echo "📥 Gettinh Api From JioSTB: $SOURCE_URL"
         curl -L --max-time 60 --retry 3 "$SOURCE_URL" -o temp.m3u
         
         if [ ! -f temp.m3u ] || [ ! -s temp.m3u ]; then
@@ -38,11 +38,26 @@ jobs:
           exit 1
         fi
         
-        grep -v "License:" temp.m3u > ZioTvPlus.m3u
+        
+        echo "#EXTM3U" > ZioTvPlus.m3u
+        echo "# License: https://yowaimo.in/license/" >> ZioTvPlus.m3u
+        
+       
+        
+        grep -v "License:" temp.m3u | grep -v "#EXTM3U" >> ZioTvPlus.m3u
+        
+        
         sed -i '/#KODIPROP:/d' ZioTvPlus.m3u
         sed -i '/#EXTHTTP:/d' ZioTvPlus.m3u
         sed -i 's|#EXTVLCOPT:http-user-agent=.*|#EXTVLCOPT:http-user-agent=JioTvPlus/2.8.4_2076/StreamFlex(StreamFlex;JioSTB) JioTvPlus-AndroidTv|g' ZioTvPlus.m3u
+        
+        
+        sed -i 's|jiotvbpkstb|jiotvpllive|g' ZioTvPlus.m3u
+        
+        # Clean URLs (remove extra parameters)
         sed -i 's|\(https://[^?]*\)[^ ]*|\1|g' ZioTvPlus.m3u
+        
+        # Extra empty lines hatao
         sed -i '/^$/d' ZioTvPlus.m3u
         
         rm -f temp.m3u
@@ -50,6 +65,8 @@ jobs:
         CHANNEL_COUNT=$(grep -c '#EXTINF' ZioTvPlus.m3u)
         echo "✅ ZioTvPlus.m3u generated!"
         echo "📊 Total channels: $CHANNEL_COUNT"
+        echo "🔗 License: https://yowaimo.in/license/"
+        echo "🔄 Replaced: jiotvbpkstb → jiotvpllive"
         
         if [ "$CHANNEL_COUNT" -eq 0 ]; then
           echo "❌ ERROR: No channels found!"
