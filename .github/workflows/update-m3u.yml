@@ -2,9 +2,11 @@ name: Update ZioTvPlus M3U
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '0 */1 * * *'  # ← Yeh change kiya
   workflow_dispatch:
   push:
+    branches:
+      - main
 
 permissions:
   contents: write
@@ -16,32 +18,54 @@ jobs:
     steps:
     - name: Checkout repo
       uses: actions/checkout@v3
-      
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
     - name: Fetch and update M3U
       env:
         SOURCE_URL: ${{ secrets.SOURCE_URL }}
       run: |
-        curl -L "$SOURCE_URL" -o temp.m3u
-        grep -v "^# License:" temp.m3u > ZioTvPlus.m3u
+        if [ -z "$SOURCE_URL" ]; then
+          echo "❌ ERROR: SOURCE_URL secret not set!"
+          exit 1
+        fi
         
-        # 1. User-Agent EXTVLCOPT me
-        sed -i 's|#EXTVLCOPT:http-user-agent=.*|#EXTVLCOPT:http-user-agent=JioTV.Plus/2.3.1_2041 (Linux;Android 14) AndroidXMedia3/1.4.0|g' ZioTvPlus.m3u
+        echo "📥 Getting Api JioSTB: $SOURCE_URL"
+        curl -L --max-time 60 --retry 3 "$SOURCE_URL" -o temp.m3u
         
-        # 2. User-Agent URL me (Tivimate ke liye)
-        sed -i 's|\.mpd|.mpd?User-Agent=JioTV.Plus%2F2.3.1_2041%20(Linux%3BAndroid%2014)%20AndroidXMedia3%2F1.4.0|g' ZioTvPlus.m3u
-        sed -i 's|\.mpd\?User-Agent|.mpd\&User-Agent|g' ZioTvPlus.m3u
-        sed -i 's|\&User-Agent|?User-Agent|g' ZioTvPlus.m3u
+        if [ ! -f temp.m3u ] || [ ! -s temp.m3u ]; then
+          echo "❌ ERROR: Failed to download M3U file!"
+          exit 1
+        fi
         
-        # 3. Cookie bhi add karo agar nahi hai
-        # (already hai toh theek hai)
+        grep -v "License:" temp.m3u > ZioTvPlus.m3u
+        sed -i '/#KODIPROP:/d' ZioTvPlus.m3u
+        sed -i '/#EXTHTTP:/d' ZioTvPlus.m3u
+        sed -i 's|#EXTVLCOPT:http-user-agent=.*|#EXTVLCOPT:http-user-agent=JioTvPlus/2.8.4_2076/StreamFlex(StreamFlex;JioSTB) JioTvPlus-AndroidTv|g' ZioTvPlus.m3u
+        sed -i 's|\(https://[^?]*\)[^ ]*|\1|g' ZioTvPlus.m3u
+        sed -i '/^$/d' ZioTvPlus.m3u
         
-        rm temp.m3u
-        echo "✅ User-Agent added in both places!"
+        rm -f temp.m3u
+        
+        CHANNEL_COUNT=$(grep -c '#EXTINF' ZioTvPlus.m3u)
+        echo "✅ ZioTvPlus.m3u generated!"
+        echo "📊 Total channels: $CHANNEL_COUNT"
+        
+        if [ "$CHANNEL_COUNT" -eq 0 ]; then
+          echo "❌ ERROR: No channels found!"
+          exit 1
+        fi
         
     - name: Commit and push
       run: |
         git config --local user.email "action@github.com"
         git config --local user.name "GitHub Action"
         git add ZioTvPlus.m3u
-        git diff --staged --quiet || git commit -m "Auto-update: $(date +'%Y-%m-%d %H:%M:%S')"
-        git push
+        
+        if git diff --staged --quiet; then
+          echo "ℹ️ No changes to commit"
+        else
+          git commit -m "Auto-update: $(date +'%Y-%m-%d %H:%M:%S')"
+          git push
+          echo "✅ Changes pushed successfully!"
+        fi
