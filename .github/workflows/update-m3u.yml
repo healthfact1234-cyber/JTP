@@ -21,22 +21,22 @@ jobs:
       env:
         SOURCE_URL: ${{ secrets.SOURCE_URL }}
       run: |
-        echo "🔄 Fetching from source..."
         curl -L "$SOURCE_URL" -o temp.m3u
-        
-        echo "License header"
-        
         grep -v "^# License:" temp.m3u > ZioTvPlus.m3u
         
-   
+        # 1. User-Agent EXTVLCOPT me
+        sed -i 's|#EXTVLCOPT:http-user-agent=.*|#EXTVLCOPT:http-user-agent=JioTV.Plus/2.3.1_2041 (Linux;Android 14) AndroidXMedia3/1.4.0|g' ZioTvPlus.m3u
         
-        echo "✅ ZioTvPlus.m3u generated!"
-        echo "📊 Total channels: $(grep -c '#EXTINF' ZioTvPlus.m3u)"
-        echo "🔑 License keys preserved!"
-        echo "🍪 Cookies preserved!"
-        echo "👤 User-Agent preserved!"
+        # 2. User-Agent URL me (Tivimate ke liye)
+        sed -i 's|\.mpd|.mpd?User-Agent=JioTV.Plus%2F2.3.1_2041%20(Linux%3BAndroid%2014)%20AndroidXMedia3%2F1.4.0|g' ZioTvPlus.m3u
+        sed -i 's|\.mpd\?User-Agent|.mpd\&User-Agent|g' ZioTvPlus.m3u
+        sed -i 's|\&User-Agent|?User-Agent|g' ZioTvPlus.m3u
+        
+        # 3. Cookie bhi add karo agar nahi hai
+        # (already hai toh theek hai)
         
         rm temp.m3u
+        echo "✅ User-Agent added in both places!"
         
     - name: Commit and push
       run: |
