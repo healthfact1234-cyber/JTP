@@ -1,1 +1,103 @@
+name: Update JioTV JSON
 
+on:
+  schedule:
+    - cron: '0 */1 * * *'
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Generate JioTV JSON
+      run: |
+        if [ ! -f "pllivejtv2.json.txt" ]; then
+          echo "❌ ERROR: pllivejtv2.json.txt not found!"
+          exit 1
+        fi
+        
+        echo "📥 Processing pllivejtv2.json.txt..."
+        
+        cat pllivejtv2.json.txt | jq '
+          
+          map(select(.id != "intro")) |
+          
+          map(
+            # Update user_agent
+            .user_agent = "JioTvPlus/2.8.4_2076/StreamFlex(StreamFlex;JioSTB) JioTvPlus-AndroidTv" |
+            
+            # Replace CDN in mpd_url
+            if .mpd_url then
+              .mpd_url = (.mpd_url | gsub("jiotvbpkstb"; "jiotvpllive"))
+            else . end |
+            
+            # Replace CDN in m3u8_url
+            if .m3u8_url then
+              .m3u8_url = (.m3u8_url | gsub("jiotvbpkstb"; "jiotvpllive"))
+            else . end |
+            
+            # Update license URL ONLY
+            .license_url = "https://yowaimo.in/license/" |
+            
+            # Keep headers EXACTLY as they are, just update Origin/Referer
+            if .headers then
+              .headers = (.headers | 
+                with_entries(
+                  if .key == "Origin" or .key == "Referer" then
+                    .value = "https://t.me/StreamFlex19"
+                  else
+                    .
+                  end
+                )
+              )
+            else . end |
+            
+            # Keep expires_in as is (don't remove if null)
+            .
+          )
+        ' > jtv.json
+        
+        if jq empty jtv.json 2>/dev/null; then
+          echo "✅ jtv.json generated successfully!"
+          TOTAL=$(jq '. | length' jtv.json)
+          DASH_COUNT=$(jq '[.[] | select(.type == "dash")] | length' jtv.json)
+          HLS_COUNT=$(jq '[.[] | select(.type == "hls")] | length' jtv.json)
+          
+          echo "📊 Total channels: $TOTAL"
+          echo "📊 DASH channels: $DASH_COUNT"
+          echo "📊 HLS channels: $HLS_COUNT"
+          echo "🔄 Replaced: jiotvbpkstb → jiotvpllive"
+          echo "🔄 User-Agent updated"
+          echo "🔗 License: https://yowaimo.in/license/"
+          echo "🔄 Headers Origin/Referer: https://t.me/StreamFlex19"
+        else
+          echo "❌ ERROR: Invalid JSON generated!"
+          cat jtv.json
+          exit 1
+        fi
+        
+    - name: Commit and push
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add jtv.json
+        
+        if git diff --staged --quiet; then
+          echo "ℹ️ No changes to commit"
+        else
+          git commit -m "Auto-update JSON: $(date +'%Y-%m-%d %H:%M:%S')"
+          git push
+          echo "✅ jtv.json pushed successfully!"
+        fi
