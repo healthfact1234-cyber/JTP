@@ -1,0 +1,38 @@
+name: Update ZioTvPlus M3U
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v3
+      
+    - name: Fetch and update M3U
+      env:
+        SOURCE_URL: ${{ secrets.SOURCE_URL }}
+      run: |
+        
+        curl -L "$SOURCE_URL" -o temp.m3u
+        
+        
+        grep -v "License:" temp.m3u > ZioTvPlus.m3u
+        
+        # Cleanup
+        rm temp.m3u
+        
+        echo "✅ ZioTvPlus.m3u generated!"
+        echo "📊 Total channels: $(grep -c '#EXTINF' ZioTvPlus.m3u)"
+        
+    - name: Commit and push
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add ZioTvPlus.m3u
+        git diff --staged --quiet || git commit -m "Auto-update: $(date +'%Y-%m-%d %H:%M:%S')"
+        git push
