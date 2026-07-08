@@ -30,7 +30,7 @@ jobs:
           exit 1
         fi
         
-        echo "📥 Gettinh Api From JioSTB: $SOURCE_URL"
+        echo "📥 Downloading from: $SOURCE_URL"
         curl -L --max-time 60 --retry 3 "$SOURCE_URL" -o temp.m3u
         
         if [ ! -f temp.m3u ] || [ ! -s temp.m3u ]; then
@@ -39,20 +39,20 @@ jobs:
         fi
         
         
-        echo "#EXTM3U" > ZioTvPlus.m3u
-        echo "# License: https://yowaimo.in/license/" >> ZioTvPlus.m3u
-        
-       
-        
-        grep -v "License:" temp.m3u | grep -v "#EXTM3U" >> ZioTvPlus.m3u
+        grep -v "License:" temp.m3u > ZioTvPlus.m3u
         
         
-        sed -i '/#KODIPROP:/d' ZioTvPlus.m3u
+        sed -i '/#KODIPROP:inputstream.adaptive.manifest_type=mpd/d' ZioTvPlus.m3u
+        sed -i '/#KODIPROP:inputstream.adaptive.license_type=clearkey/d' ZioTvPlus.m3u
+        sed -i '/#KODIPROP:inputstream.adaptive.license_key=/d' ZioTvPlus.m3u
         sed -i '/#EXTHTTP:/d' ZioTvPlus.m3u
         sed -i 's|#EXTVLCOPT:http-user-agent=.*|#EXTVLCOPT:http-user-agent=JioTvPlus/2.8.4_2076/StreamFlex(StreamFlex;JioSTB) JioTvPlus-AndroidTv|g' ZioTvPlus.m3u
         
         
         sed -i 's|jiotvbpkstb|jiotvpllive|g' ZioTvPlus.m3u
+        
+        
+        sed -i '/#EXTINF/{n; /^https\?:/ s|^|#KODIPROP:inputstream.adaptive.license_key=https://yowaimo.in/license/\n|;}' ZioTvPlus.m3u
         
         # Clean URLs (remove extra parameters)
         sed -i 's|\(https://[^?]*\)[^ ]*|\1|g' ZioTvPlus.m3u
@@ -65,8 +65,8 @@ jobs:
         CHANNEL_COUNT=$(grep -c '#EXTINF' ZioTvPlus.m3u)
         echo "✅ ZioTvPlus.m3u generated!"
         echo "📊 Total channels: $CHANNEL_COUNT"
-        echo "🔗 License: https://yowaimo.in/license/"
-        echo "🔄 Replaced: jiotvbpkstb → jiotvpllive"
+        echo "🎭 Join @StreamFlex19 On Telegram"
+        echo "🔗 License URL added to each channel"
         
         if [ "$CHANNEL_COUNT" -eq 0 ]; then
           echo "❌ ERROR: No channels found!"
