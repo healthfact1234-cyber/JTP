@@ -2,10 +2,9 @@ name: Update ZioTvPlus M3U
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # 👈 30 minute
-    # - cron: '0 */2 * * *'  # 👈 2 hours 
+    - cron: '0 */2 * * *'
   workflow_dispatch:
-  push:  
+  push:
 
 permissions:
   contents: write
@@ -25,30 +24,19 @@ jobs:
         echo "🔄 Fetching from source..."
         curl -L "$SOURCE_URL" -o temp.m3u
         
-        echo "🧹 Cleaning file..."
+        echo "License header"
         
-        grep -v "License:" temp.m3u > ZioTvPlus.m3u
+        grep -v "^# License:" temp.m3u > ZioTvPlus.m3u
         
-        
-        sed -i '/#KODIPROP:/d' ZioTvPlus.m3u
-        
-        
-        sed -i '/#EXTHTTP:/d' ZioTvPlus.m3u
-        
-        
-        sed -i 's|#EXTVLCOPT:http-user-agent=.*|#EXTVLCOPT:http-user-agent=JioTV.Plus/2.3.1_2041 (Linux;Android 14) AndroidXMedia3/1.4.0|g' ZioTvPlus.m3u
-        
-        
-        sed -i '/#EXTINF:/a #EXTVLCOPT:http-user-agent=JioTV.Plus/2.3.1_2041 (Linux;Android 14) AndroidXMedia3/1.4.0' ZioTvPlus.m3u
-        
-        
-        sed -i '/^$/d' ZioTvPlus.m3u
-        
-        rm temp.m3u
+   
         
         echo "✅ ZioTvPlus.m3u generated!"
         echo "📊 Total channels: $(grep -c '#EXTINF' ZioTvPlus.m3u)"
-        echo "🔧 User-Agent: JioTV.Plus/2.3.1_2041 (Linux;Android 14) AndroidXMedia3/1.4.0"
+        echo "🔑 License keys preserved!"
+        echo "🍪 Cookies preserved!"
+        echo "👤 User-Agent preserved!"
+        
+        rm temp.m3u
         
     - name: Commit and push
       run: |
