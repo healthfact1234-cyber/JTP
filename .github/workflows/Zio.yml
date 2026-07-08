@@ -17,7 +17,7 @@ jobs:
     
     - name: JSON from Api
       run: |
-        curl -o Zio.json "${{ secrets.SOURCE_URL }}"
+        curl -o Zio.json "${{ secrets.SOURCE_API }}"
     
     - name: Validate JSON
       run: |
