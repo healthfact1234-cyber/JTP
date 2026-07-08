@@ -2,8 +2,12 @@ name: Update ZioTvPlus M3U
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
-  workflow_dispatch:
+    - cron: '0 */1 * * *' 
+  workflow_dispatch:      
+
+
+permissions:
+  contents: write
 
 jobs:
   update:
@@ -17,21 +21,23 @@ jobs:
       env:
         SOURCE_URL: ${{ secrets.SOURCE_URL }}
       run: |
-        
         curl -L "$SOURCE_URL" -o temp.m3u
         
-        
+        # License
         grep -v "License:" temp.m3u > ZioTvPlus.m3u
         
-       
+        # 1. User-Agent update karna
         sed -i 's|#EXTVLCOPT:http-user-agent=JioTvPlus/2.3.1_2041 (Linux;Android 14) AndroidXMedia3/1.4.0|#EXTVLCOPT:http-user-agent=JioTvPlus/2.8.4_2076/StreamFlex(StreamFlex;JioSTB) JioTvPlus-AndroidTv|g' ZioTvPlus.m3u
         
-       
+        
+        sed -i 's|jiotvbpkstb|jiotvpllive|g' ZioTvPlus.m3u
+        
         rm temp.m3u
         
         echo "✅ ZioTvPlus.m3u generated!"
         echo "📊 Total channels: $(grep -c '#EXTINF' ZioTvPlus.m3u)"
-        echo "🔧 User-Agent updated to: JioTvPlus/2.8.4_2076/StreamFlex(StreamFlex;JioSTB) JioTvPlus-AndroidTv"
+        echo "🔧 User-Agent updated!"
+        echo "🔄 CDN replaced: jiotvbpkstb -> jiotvpllive"
         
     - name: Commit and push
       run: |
